@@ -24,6 +24,7 @@
  *  THE SOFTWARE.
  */
 
+
 declare module powerbi {
     enum VisualDataRoleKind {
         /** Indicates that the role should be bound to something that evaluates to a grouping of values. */
@@ -55,12 +56,11 @@ declare module powerbi {
 }
 
 
-
 declare module powerbi {
     export interface DragPayload {
     }
 }
-
+﻿
 
 declare module jsCommon {
     export interface IStringResourceProvider {
@@ -68,6 +68,14 @@ declare module jsCommon {
     }
 }
 
+
+declare module powerbi.visuals {
+    export interface IPoint {
+        x: number;
+        y: number;
+    }
+}
+﻿
 
 declare module powerbi {
     /** 
@@ -199,8 +207,7 @@ declare module powerbi {
         (result: T, done: boolean): void;
     }
 }
-
-
+﻿
 
 declare module powerbi.visuals {
     export interface IRect {
@@ -230,7 +237,7 @@ declare module powerbi.visuals {
         getSelectorsByColumn(): Selector;
     }
 }
-
+﻿
 
 declare module powerbi.data {
     export interface CompiledDataViewMapping {
@@ -348,7 +355,7 @@ declare module powerbi.data {
         type?: ValueTypeDescriptor;
     }
 }
-
+﻿
 
 declare module powerbi {
     /** Represents views of a data set. */
@@ -477,9 +484,33 @@ declare module powerbi {
 
     export interface DataViewTreeNode {
         name?: string;
+
+        /**
+         * When used under the context of DataView.tree, this value is one of the elements in the values property.
+         *
+         * When used under the context of DataView.matrix, this property is the value of the particular 
+         * group instance represented by this node (e.g. In a grouping on Year, a node can have value == 2016).
+         *
+         * DEPRECATED for usage under the context of DataView.matrix: This property is deprecated for objects 
+         * that conform to the DataViewMatrixNode interface (which extends DataViewTreeNode).
+         * New visuals code should consume the new property levelValues on DataViewMatrixNode instead.
+         * If this node represents a composite group node in matrix, this property will be undefined.
+         */
         value?: any;
-        
-        /** In each of the key-value-pair in this this dictionary, the key is the position of the column in the select statement to which the value belongs. */
+      
+        /** 
+         * When used under the context of DataView.tree, this property contains all the values in this node. 
+         * The key of each of the key-value-pair in this dictionary is the position of the column in the 
+         * select statement to which the value belongs.
+         *
+         * When used under the context of DataView.matrix.rows (as DataViewMatrixNode), if this node represents the 
+         * inner-most dimension of row groups (i.e. a leaf node), then this property will contain the values at the 
+         * matrix intersection under the group.  The value type will be DataViewMatrixNodeValue, and their 
+         * valueSourceIndex property will contain the position of the column in the select statement to which the 
+         * value belongs.
+         *
+         * When used under the context of DataView.matrix.columns (as DataViewMatrixNode), this property is not used.
+         */
         values?: { [id: number]: DataViewTreeNodeValue };
 
         children?: DataViewTreeNode[];
@@ -541,13 +572,51 @@ declare module powerbi {
         /** Indicates the level this node is on. Zero indicates the outermost children (root node level is undefined). */
         level?: number;
 
-        /** Indicates the source metadata index on the node's level. Its value is 0 if omitted. */
+        /**
+         * Indicates the source metadata index on the node's level. Its value is 0 if omitted.
+         *
+         * DEPRECATED: This property is deprecated and exists for backward-compatibility only.
+         * New visuals code should consume the new property levelSourceIndex on DataViewMatrixGroupValue instead.
+         */
         levelSourceIndex?: number;
+
+        /**
+         * The values of the particular group instance represented by this node.
+         * This array property would contain more than one element in a composite group
+         * (e.g. Year == 2016 and Month == 'January').
+         */
+        levelValues?: DataViewMatrixGroupValue[];
 
         /** Indicates whether or not the node is a subtotal node. Its value is false if omitted. */
         isSubtotal?: boolean;
     }
 
+    /**
+     * Represents a value at a particular level of a matrix's rows or columns hierarchy.
+     * In the hierarchy level node is an instance of a composite group, this object will
+     * be one of multiple values
+     */
+    export interface DataViewMatrixGroupValue extends DataViewTreeNodeValue {
+        /**
+         * Indicates the index of the corresponding column for this group level value 
+         * (held by DataViewHierarchyLevel.sources).
+         *
+         * @example
+         * // For example, to get the source column metadata of each level value at a particular row hierarchy node:
+         * let matrixRowsHierarchy: DataViewHierarchy = dataView.matrix.rows;
+         * let targetRowsHierarchyNode = <DataViewMatrixNode>matrixRowsHierarchy.root.children[0];
+         * // Use the DataViewMatrixNode.level property to get the corresponding DataViewHierarchyLevel...
+         * let targetRowsHierarchyLevel: DataViewHierarchyLevel = matrixRows.levels[targetRowsHierarchyNode.level];
+         * for (let levelValue in rowsRootNode.levelValues) {
+         *   // columnMetadata is the source column for the particular levelValue.value in this loop iteration
+         *   let columnMetadata: DataViewMetadataColumn = 
+         *     targetRowsHierarchyLevel.sources[levelValue.levelSourceIndex];
+         * }
+         */
+        levelSourceIndex: number;
+    }
+
+    /** Represents a value at the matrix intersection, used in the values property on DataViewMatrixNode (inherited from DataViewTreeNode). */
     export interface DataViewMatrixNodeValue extends DataViewTreeNodeValue {
         /** Indicates the index of the corresponding measure (held by DataViewMatrix.valueSources). Its value is 0 if omitted. */
         valueSourceIndex?: number;
@@ -574,7 +643,7 @@ declare module powerbi {
         imageBase64: string;
     }
 }
-
+﻿
 
 declare module powerbi {
     export interface DataViewMapping {
@@ -748,7 +817,7 @@ declare module powerbi {
         regression: {};
     }
 }
-
+﻿
 
 declare module powerbi {
     /** Represents evaluated, named, custom objects in a DataView. */
@@ -775,7 +844,7 @@ declare module powerbi {
 
     export type DataViewPropertyValue = PrimitiveValue | StructuralObjectValue;
 }
-
+﻿
 
 declare module powerbi.data {
     export interface DataViewObjectDescriptors {
@@ -827,7 +896,7 @@ declare module powerbi.data {
     }
     
 }
-
+﻿
 
 declare module powerbi {
     /** Encapsulates the identity of a data scope in a DataView. */
@@ -839,8 +908,7 @@ declare module powerbi {
         key: string;
     }
 }
-
-
+﻿
 
 declare module powerbi.data {
     /** Defines a match against all instances of a given DataView scope. */
@@ -849,14 +917,14 @@ declare module powerbi.data {
         key: string;
     }
 }
-
+﻿
 
 declare module powerbi.data {
     import IStringResourceProvider = jsCommon.IStringResourceProvider;
 
     export type DisplayNameGetter = ((resourceProvider: IStringResourceProvider) => string) | string;
 }
-
+﻿
 
 declare module powerbi.data {
     export interface ScriptInputColumn {
@@ -872,7 +940,7 @@ declare module powerbi.data {
         Columns?: ScriptInputColumn[];
     }
 }
-
+﻿
 
 declare module powerbi.data {
     /** Defines a selector for content, including data-, metadata, and user-defined repetition. */
@@ -889,7 +957,7 @@ declare module powerbi.data {
 
     export type DataRepetitionSelector = DataViewScopeIdentity | DataViewScopeWildcard; 
 }
-
+﻿
 
 declare module powerbi.data {
     //intentionally blank interfaces since this is not part of the public API
@@ -901,7 +969,7 @@ declare module powerbi.data {
     export interface ISQConstantExpr extends ISQExpr { }
 
 }
-
+﻿
 
 declare module powerbi {
     export const enum SortDirection {
@@ -909,7 +977,7 @@ declare module powerbi {
         Descending = 2,
     }
 }
-
+﻿
 
 declare module powerbi {
     export interface IViewport {
@@ -917,7 +985,7 @@ declare module powerbi {
         width: number;
     }
 }
-
+﻿
 
 declare module powerbi {
     import DisplayNameGetter = powerbi.data.DisplayNameGetter;
@@ -949,8 +1017,7 @@ declare module powerbi {
         kind?: VisualDataRoleKind;
     }
 }
-
-
+﻿
 
 declare module powerbi.extensibility {
     /**
@@ -978,7 +1045,7 @@ declare module powerbi.extensibility {
  
     }
 }
-
+﻿
 
 declare module powerbi.extensibility {
 
@@ -1030,7 +1097,48 @@ declare module powerbi.extensibility {
     }
 }
 
+﻿
 
+declare module powerbi {   
+    
+    /**
+     * Interface that provides scripted access to geographical location information associated with the hosting device
+     * The Interface is similar to W3 Geolocation API Specification {@link https://dev.w3.org/geo/api/spec-source.html}
+     */
+    export interface IGeolocation {
+        /**
+         * Request repeated updates
+         * 
+         * @param successCallback invoked when current location successfully obtained
+         * @param errorCallback invoked when attempt to obtain the current location fails
+         * 
+         * @return a number value that uniquely identifies a watch operation
+         */
+        watchPosition(successCallback: IPositionCallback, errorCallback?: IPositionErrorCallback): number;
+        /**
+         * Cancel the updates
+         * 
+         * @param watchId  a number returned from {@link IGeolocation#watchPosition}
+         */
+        clearWatch(watchId: number): void;
+        /**
+         * One-shot position request.
+         * 
+         * @param successCallback invoked when current location successfully obtained
+         * @param errorCallback invoked when attempt to obtain the current location fails
+         */
+        getCurrentPosition(successCallback: IPositionCallback, errorCallback?: IPositionErrorCallback): void;
+    }
+
+    export interface IPositionCallback {
+        (position: Position): void;
+    }
+    
+    export interface IPositionErrorCallback {
+        (error: PositionError): void;
+    }
+}
+﻿
 
 declare module powerbi {
     export interface DefaultValueDefinition {
@@ -1061,7 +1169,7 @@ declare module powerbi {
     }
     
 }
-
+﻿
 
 declare module powerbi {
     export interface Fill {
@@ -1099,7 +1207,7 @@ declare module powerbi {
         nullable: boolean;
     }  
 }
-
+﻿
 
 declare module powerbi {
     export interface FillRule extends FillRuleGeneric<string, number> {
@@ -1132,13 +1240,13 @@ declare module powerbi {
         value?: TValue;
     }
 }
-
+﻿
 
 declare module powerbi {
     export interface FilterTypeDescriptor {
     }
 }
-
+﻿
 
 declare module powerbi {
     export type ImageValue = ImageDefinitionGeneric<string>;
@@ -1152,7 +1260,7 @@ declare module powerbi {
     export interface ImageTypeDescriptor { }
 
 }
-
+﻿
 
 declare module powerbi {
     export type Paragraphs = Paragraph[];
@@ -1178,7 +1286,7 @@ declare module powerbi {
         value: string;
     }
 }
-
+﻿
 
 declare module powerbi {
     import SemanticFilter = data.ISemanticFilter;
@@ -1205,8 +1313,7 @@ declare module powerbi {
         //etc.
     }
 }
-
-
+﻿
 
 declare module powerbi {
     /** Describes a data value type in the client type system. Can be used to get a concrete ValueType instance. */
@@ -1271,12 +1378,13 @@ declare module powerbi {
     /** Describes instances of value type objects. */
     export type PrimitiveValue = string | number | boolean | Date;
 }
-
+﻿
 
 declare module powerbi {
     import DataViewObjectDescriptor = powerbi.data.DataViewObjectDescriptor;
     import DataViewObjectDescriptors = powerbi.data.DataViewObjectDescriptors;
     import Selector = powerbi.data.Selector;
+    import IPoint = powerbi.visuals.IPoint;
     import ISemanticFilter = powerbi.data.ISemanticFilter;
     import ISQExpr = powerbi.data.ISQExpr;
     import IStringResourceProvider = jsCommon.IStringResourceProvider;
@@ -1410,6 +1518,9 @@ declare module powerbi {
 
         /** Indicates whether showing the data underlying this visual would be helpful.  Visuals that already show raw data can specify this. */
         disableVisualDetails?: boolean;
+
+        /** Indicates whether focus mode is supported for the visual. Visuals that would not benefit from focus mode (such as non-data-bound ones) can set it to true.  */
+        disableFocusMode?: boolean;
     }
 
     /** Defines the visual sorting capability. */
@@ -1582,6 +1693,13 @@ declare module powerbi {
         data2?: SelectorsByColumn[];
     }
 
+    export interface ContextMenuArgs {
+        data: SelectorsByColumn[];
+
+        /** Absolute coordinates for the top-left anchor of the context menu. */
+        position: IPoint;
+    }
+
     export interface SelectObjectEventArgs {
         object: DataViewObjectDescriptor;
     }
@@ -1634,6 +1752,9 @@ declare module powerbi {
         /** Notifies of a data point being selected. */
         onSelect(args: SelectEventArgs): void;  // TODO: Revisit onSelect vs. onSelectObject.
 
+        /** Notifies of a request for a context menu. */
+        onContextMenu(args: ContextMenuArgs): void;
+
         /** Check if selection is sticky or otherwise. */
         shouldRetainSelection(): boolean;
 
@@ -1677,6 +1798,9 @@ declare module powerbi {
         /** Gets Geocoding Service. */
         geocoder(): IGeocoder;
 
+        /** Gets IGeolocation Service */
+        geolocation(): IGeolocation;
+
         /** Gets the locale string */
         locale?(): string;
 
@@ -1700,6 +1824,7 @@ declare module powerbi {
     }
 }
 
+﻿
 
 declare module powerbi {
     
@@ -1722,6 +1847,9 @@ declare module powerbi {
         */
         customizeQuery?: CustomizeQueryMethod;
 
+        /** Funation to allow the visual to provide additional information for telemetry. */
+        getAdditionalTelemetry?: GetAdditionalTelemetryMethod;
+
         /** The class of the plugin.  At the moment it is only used to have a way to indicate the class name that a custom visual has. */
         class?: string;
 
@@ -1738,12 +1866,17 @@ declare module powerbi {
         apiVersion?: string;
     }
 
+    /** Method for gathering addition information from the visual for telemetry. */
+    export interface GetAdditionalTelemetryMethod {
+        (dataView: DataView): any;
+    }
+
     /** Factory method for an IVisual.  This factory method should be registered on the powerbi.visuals object. */
     export interface IVisualFactoryMethod {
         (): powerbi.IVisual;
     }
 }
-
+﻿
 
 declare module powerbi {
     export interface IVisualStyle{
@@ -1823,7 +1956,7 @@ declare module powerbi {
         className?: string;
     }
 }
-
+﻿
 
 declare module powerbi {
     import Selector = powerbi.data.Selector;

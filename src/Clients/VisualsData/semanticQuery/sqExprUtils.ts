@@ -24,8 +24,6 @@
  *  THE SOFTWARE.
  */
 
-/// <reference path="../_references.ts"/>
-
 module powerbi.data {
     import StringExtensions = jsCommon.StringExtensions;
 
@@ -76,6 +74,17 @@ module powerbi.data {
             return emptyList;
         }
 
+        export function supportsArithmetic(expr: SQExpr, schema: FederatedConceptualSchema): boolean {
+            let metadata = expr.getMetadata(schema),
+                type = metadata && metadata.type;
+
+            if (!metadata || !type) {
+                return false;
+            }
+            
+            return type.numeric || type.dateTime || type.duration;
+        }
+
         export function isSupportedAggregate(
             expr: SQExpr,
             schema: FederatedConceptualSchema,
@@ -110,8 +119,8 @@ module powerbi.data {
 
             return true;
         }
-
-        export function uniqueName(namedItems: NamedSQExpr[], expr: SQExpr): string {
+        
+        export function uniqueName(namedItems: NamedSQExpr[], expr: SQExpr, exprDefaultName?: string): string {
             debug.assertValue(namedItems, 'namedItems');
 
             // Determine all names
@@ -119,7 +128,7 @@ module powerbi.data {
             for (let i = 0, len = namedItems.length; i < len; i++)
                 names[namedItems[i].name] = true;
 
-            return StringExtensions.findUniqueName(names, defaultName(expr));
+            return StringExtensions.findUniqueName(names, exprDefaultName || defaultName(expr));
         }
 
         /** Generates a default expression name  */
@@ -328,6 +337,10 @@ module powerbi.data {
                 return QueryAggregateFunction[expr.func] + '(' + expr.arg.accept(this) + ')';
             }
 
+            public visitArithmetic(expr: SQArithmeticExpr, fallback: string): string {
+                return powerbi.data.getArithmeticOperatorName(expr.operator) + '(' + expr.left.accept(this) + ', ' + expr.right.accept(this) + ')';
+            }
+
             public visitConstant(expr: SQConstantExpr): string {
                 return 'const';
             }
@@ -345,6 +358,10 @@ module powerbi.data {
             }
 
             public visitAggr(expr: SQAggregationExpr): boolean {
+                return true;
+            }
+
+            public visitArithmetic(expr: SQArithmeticExpr): boolean {
                 return true;
             }
 

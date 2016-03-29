@@ -24,8 +24,6 @@
  *  THE SOFTWARE.
  */
 
-/// <reference path="../_references.ts"/>
-
 module powerbi.visuals {
     export const slicerCapabilities: VisualCapabilities = {
         dataRoles: [
@@ -142,6 +140,7 @@ module powerbi.visuals {
         },
         suppressDefaultTitle: true,
         disableVisualDetails: true,
+        disableFocusMode: true,
     };
 
     // TODO: Generate these from above, defining twice just introduces potential for error

@@ -24,8 +24,6 @@
  *  THE SOFTWARE.
  */
 
-/// <reference path="../_references.ts"/>
-
 module powerbi.visuals {
     import Color = jsCommon.Color;
     import PixelConverter = jsCommon.PixelConverter;
@@ -43,6 +41,7 @@ module powerbi.visuals {
         disablePanning?: boolean;
         isLegendScrollable?: boolean;
         viewChangeThrottleInterval?: number; // Minimum interval between viewChange events (in milliseconds)
+        enableCurrentLocation?: boolean;
     }
 
     export interface IMapControlFactory {
@@ -489,6 +488,7 @@ module powerbi.visuals {
             let labelSettings = this.dataLabelsSettings;
 
             for (let dataPoint of dataPoints) {
+                debug.assertValue(dataPoint, 'dataPoint should never be null/undefined');
                 let text = dataPoint.labeltext;
 
                 let properties: TextProperties = {
@@ -934,6 +934,8 @@ module powerbi.visuals {
         min: number;
         max: number;
     }
+    
+    const DefaultLocationZoomLevel = 11;
 
     export class Map implements IVisual {
         public currentViewport: IViewport;
@@ -980,6 +982,8 @@ module powerbi.visuals {
         private isLegendScrollable: boolean;
         private viewChangeThrottleInterval: number;
         private root: JQuery;
+        private enableCurrentLocation: boolean;
+        private isCurrentLocation: boolean;
 
         constructor(options: MapConstructionOptions) {
             if (options.filledMap) {
@@ -998,6 +1002,7 @@ module powerbi.visuals {
             this.disablePanning = options.disablePanning;
             this.isLegendScrollable = !!options.behavior;
             this.viewChangeThrottleInterval = options.viewChangeThrottleInterval;
+            this.enableCurrentLocation = options.enableCurrentLocation;
         }
 
         public init(options: VisualInitOptions) {
@@ -1025,8 +1030,40 @@ module powerbi.visuals {
                 Microsoft.Maps.loadModule('Microsoft.Maps.Overlays.Style', {
                     callback: () => {
                         this.initialize(element[0]);
+                        if (this.enableCurrentLocation) {
+                            this.createCurrentLocation(element);
+                        }
                     }
                 });
+            });
+        }
+
+        private createCurrentLocation(element: JQuery): void {
+            let myLocBtn = InJs.DomFactory.div().addClass("mapCurrentLocation").appendTo(element);
+            let pushpin: Microsoft.Maps.Pushpin;
+
+            myLocBtn.on('click',() => {
+                
+                if (this.isCurrentLocation) {
+                    // Restore previous map view and remove pushpin
+                    if (pushpin) {
+                        this.mapControl.entities.remove(pushpin);
+                    }
+                    this.updateInternal(false, false);
+                    this.isCurrentLocation = false;
+                } else {
+                    this.host.geolocation().getCurrentPosition((position: Position) => {
+                        let location = new Microsoft.Maps.Location(position.coords.latitude, position.coords.longitude);
+                        if (pushpin) {
+                            this.mapControl.entities.remove(pushpin);
+                        }
+                        pushpin = MapUtil.CurrentLocation.createPushpin(location);
+                        this.mapControl.entities.push(pushpin);
+                        this.updateMapView(location, DefaultLocationZoomLevel);
+                        this.isCurrentLocation = true;
+                    });
+                }
+
             });
         }
 
@@ -1860,10 +1897,14 @@ module powerbi.visuals {
                 let levelOfDetail = this.getOptimumLevelOfDetail(mapViewport.width, mapViewport.height);
                 let center = this.getViewCenter(levelOfDetail);
 
-                if (!this.receivedExternalViewChange || !this.interactivityService) {
-                    this.executingInternalViewChange = true;
-                    this.mapControl.setView({ center: center, zoom: levelOfDetail, animate: true });
-                }
+                this.updateMapView(center, levelOfDetail);
+            }
+        }
+
+        private updateMapView(center: Microsoft.Maps.Location, levelOfDetail: number): void {
+            if (!this.receivedExternalViewChange || !this.interactivityService) {
+                this.executingInternalViewChange = true;
+                this.mapControl.setView({ center: center, zoom: levelOfDetail, animate: true });
             }
         }
 

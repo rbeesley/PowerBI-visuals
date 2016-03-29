@@ -2,7 +2,7 @@
  *  Power BI Visualizations
  *
  *  Copyright (c) Microsoft Corporation
- *  All rights reserved.
+ *  All rights reserved. 
  *  MIT License
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -11,29 +11,28 @@
  *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  *  copies of the Software, and to permit persons to whom the Software is
  *  furnished to do so, subject to the following conditions:
- *
- *  The above copyright notice and this permission notice shall be included in
+ *   
+ *  The above copyright notice and this permission notice shall be included in 
  *  all copies or substantial portions of the Software.
- *
- *  THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *   
+ *  THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
  *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *  THE SOFTWARE.
  */
 
-/// <reference path="../_references.ts"/>
-
 module powerbi.visuals {
     import EnumExtensions = jsCommon.EnumExtensions;
     import ClassAndSelector = jsCommon.CssConstants.ClassAndSelector;
     import createClassAndSelector = jsCommon.CssConstants.createClassAndSelector;
-
+    const DEFAULT_AXIS_SCALE_TYPE: string = axisScale.linear;
     const COMBOCHART_DOMAIN_OVERLAP_TRESHOLD_PERCENTAGE = 0.1;
     // the interactive right margin is set to be the circle selection radius of the hover line
     const INTERACTIVITY_RIGHT_MARGIN = 6;
+    export const DEFAULT_AXIS_COLOR = '#777';
 
     export const enum CartesianChartType {
         Line,
@@ -69,6 +68,8 @@ module powerbi.visuals {
         forcedTickCount?: number;
         forcedYDomain?: any[];
         forcedXDomain?: any[];
+        xReferenceLineValue?: number;
+        y1ReferenceLineValue?: number;
         categoryAxisDisplayUnits?: number;
         categoryAxisPrecision?: number;
         valueAxisDisplayUnits?: number;
@@ -108,11 +109,8 @@ module powerbi.visuals {
         animator?: IGenericAnimator;
         cartesianSmallViewPortProperties?: CartesianSmallViewPortProperties;
         behavior?: IInteractiveBehavior;
-        seriesLabelFormattingEnabled?: boolean;
         isLabelInteractivityEnabled?: boolean;
         tooltipsEnabled?: boolean;
-        referenceLinesEnabled?: boolean;
-        backgroundImageEnabled?: boolean;
         lineChartLabelDensityEnabled?: boolean;
         trimOrdinalDataOnOverflow?: boolean;
     }
@@ -137,7 +135,6 @@ module powerbi.visuals {
         isScrollable: boolean;
         interactivityService?: IInteractivityService;
         animator?: IGenericAnimator;
-        seriesLabelFormattingEnabled?: boolean;
         isLabelInteractivityEnabled?: boolean;
         tooltipsEnabled?: boolean;
         lineChartLabelDensityEnabled?: boolean;
@@ -241,7 +238,7 @@ module powerbi.visuals {
         axesLayout: CartesianAxesLayout,
         suppressAnimations: boolean) => void;
 
-    /**
+    /** 
      * Renders a data series as a cartestian visual.
      */
     export class CartesianChart implements IVisual {
@@ -280,17 +277,14 @@ module powerbi.visuals {
         private interactivityService: IInteractivityService;
         private behavior: IInteractiveBehavior;
         private sharedColorPalette: SharedColorPalette;
-        private seriesLabelFormattingEnabled: boolean;
         private isLabelInteractivityEnabled: boolean;
         private tooltipsEnabled: boolean;
         private lineChartLabelDensityEnabled: boolean;
         private trimOrdinalDataOnOverflow: boolean;
         private isMobileChart: boolean;
 
-        private referenceLinesEnabled: boolean;
         private xRefLine: ClassAndSelector = createClassAndSelector('x-ref-line');
         private y1RefLine: ClassAndSelector = createClassAndSelector('y1-ref-line');
-        private backgroundImageEnabled: boolean;
 
         public animator: IGenericAnimator;
 
@@ -324,10 +318,7 @@ module powerbi.visuals {
             if (options) {
                 this.tooltipsEnabled = options.tooltipsEnabled;
                 this.type = options.chartType;
-                this.seriesLabelFormattingEnabled = options.seriesLabelFormattingEnabled;
                 this.isLabelInteractivityEnabled = options.isLabelInteractivityEnabled;
-                this.referenceLinesEnabled = options.referenceLinesEnabled;
-                this.backgroundImageEnabled = options.backgroundImageEnabled;
                 this.lineChartLabelDensityEnabled = options.lineChartLabelDensityEnabled;
                 if (options.trimOrdinalDataOnOverflow !== undefined)
                     this.trimOrdinalDataOnOverflow = options.trimOrdinalDataOnOverflow;
@@ -409,13 +400,26 @@ module powerbi.visuals {
             let axisTypeValue = DataViewObjects.getValue(objects, propertyId);
 
             if (!objects || axisTypeValue === undefined) {
-                // If we don't have anything set (Auto), show charts as Scalar if the category type is numeric or time.
+                // If we don't have anything set (Auto), show charts as Scalar if the category type is numeric or time. 
                 // If we have the property, it will override the type.
                 return !AxisHelper.isOrdinal(type);
             }
 
             // also checking type here to be in sync with AxisHelper, which ignores scalar if the type is non-numeric.
             return (axisTypeValue === axisType.scalar) && !AxisHelper.isOrdinal(type);
+        }
+
+        public static getAdditionalTelemetry(dataView: DataView): any {
+            let telemetry: any = {};
+
+            let categoryColumn = dataView && dataView.categorical && _.first(dataView.categorical.categories);
+            if (categoryColumn) {
+                telemetry.axisType = visuals.CartesianChart.getIsScalar(dataView.metadata.objects, visuals.columnChartProps.categoryAxis.axisType, categoryColumn.source.type)
+                    ? 'scalar'
+                    : 'categorical';
+            }
+
+            return telemetry;
         }
 
         public static detectScalarMapping(dataViewMapping: data.CompiledDataViewMapping): boolean {
@@ -550,7 +554,7 @@ module powerbi.visuals {
                 let show = DataViewObject.getValue(this.legendObjectProperties, legendProps.show, this.legend.isVisible());
                 let showTitle = DataViewObject.getValue(this.legendObjectProperties, legendProps.showTitle, true);
                 let titleText = DataViewObject.getValue(this.legendObjectProperties, legendProps.titleText, this.layerLegendData ? this.layerLegendData.title : '');
-                let labelColor = DataViewObject.getValue(this.legendObjectProperties, legendProps.labelColor, this.layerLegendData ? this.layerLegendData.labelColor : LegendData.DefaultLegendLabelFillColor);
+                let labelColor = DataViewObject.getValue(this.legendObjectProperties, legendProps.labelColor, LegendData.DefaultLegendLabelFillColor);
                 let fontSize = DataViewObject.getValue(this.legendObjectProperties, legendProps.fontSize, this.layerLegendData && this.layerLegendData.fontSize ? this.layerLegendData.fontSize : SVGLegend.DefaultFontSizeInPt);
 
                 enumeration.pushInstance({
@@ -572,16 +576,16 @@ module powerbi.visuals {
             else if (options.objectName === 'valueAxis') {
                 this.getValueAxisValues(enumeration);
             }
-            else if (options.objectName === 'y1AxisReferenceLine' && this.referenceLinesEnabled) {
+            else if (options.objectName === 'y1AxisReferenceLine') {
                 let refLinedefaultColor = this.sharedColorPalette.getColorByIndex(0).value;
                 ReferenceLineHelper.enumerateObjectInstances(enumeration, this.y1AxisReferenceLines, refLinedefaultColor, options.objectName);
             }
-            else if (options.objectName === 'xAxisReferenceLine' && this.referenceLinesEnabled) {
+            else if (options.objectName === 'xAxisReferenceLine') {
                 let refLinedefaultColor = this.sharedColorPalette.getColorByIndex(0).value;
                 ReferenceLineHelper.enumerateObjectInstances(enumeration, this.xAxisReferenceLines, refLinedefaultColor, options.objectName);
             }
             else if (options.objectName === 'plotArea') {
-                visualBackgroundHelper.enumeratePlot(enumeration, this.background, this.backgroundImageEnabled);
+                visualBackgroundHelper.enumeratePlot(enumeration, this.background);
             }
 
             for (let i = 0, len = layersLength; i < len; i++) {
@@ -621,14 +625,20 @@ module powerbi.visuals {
             return false;
         }
 
+        private getAxisScaleOptions(axisType: AxisLocation): string[] {
+            let scaleOptions = [DEFAULT_AXIS_SCALE_TYPE];
+            if (this.axes.isLogScaleAllowed(axisType))
+                scaleOptions.push(axisScale.log);
+            return scaleOptions;
+        }
+
         private getCategoryAxisValues(enumeration: ObjectEnumerationBuilder): void {
             if (!this.categoryAxisProperties) {
                 return;
             }
             let supportedType = axisType.both;
             let isScalar = false;
-            let logPossible = this.axes.isLogScaleAllowed(AxisLocation.X);
-            let scaleOptions = [axisScale.log, axisScale.linear];//until options can be update in propPane, show all options
+            let scaleOptions = this.getAxisScaleOptions(AxisLocation.X);
 
             if (this.layers && this.layers[0].getSupportedCategoryAxisType) {
                 supportedType = this.layers[0].getSupportedCategoryAxisType();
@@ -662,14 +672,15 @@ module powerbi.visuals {
                 instance.properties['axisType'] = isScalar ? axisType.scalar : axisType.categorical;
             }
             if (isScalar) {
-                instance.properties['axisScale'] = (this.categoryAxisProperties['axisScale'] != null && logPossible) ? this.categoryAxisProperties['axisScale'] : axisScale.linear;
+                instance.properties['axisScale'] = this.categoryAxisProperties['axisScale'] || DEFAULT_AXIS_SCALE_TYPE;
                 instance.properties['start'] = this.categoryAxisProperties['start'];
                 instance.properties['end'] = this.categoryAxisProperties['end'];
             }
             instance.properties['showAxisTitle'] = this.categoryAxisProperties['showAxisTitle'] != null ? this.categoryAxisProperties['showAxisTitle'] : false;
 
             instance.properties['axisStyle'] = this.categoryAxisProperties['axisStyle'] ? this.categoryAxisProperties['axisStyle'] : axisStyle.showTitleOnly;
-            instance.properties['labelColor'] = this.categoryAxisProperties['labelColor'];
+            instance.properties['labelColor'] = this.categoryAxisProperties['labelColor'] || DEFAULT_AXIS_COLOR;
+
             if (isScalar) {
                 instance.properties['labelDisplayUnits'] = this.categoryAxisProperties['labelDisplayUnits'] ? this.categoryAxisProperties['labelDisplayUnits'] : 0;
                 let labelPrecision = this.categoryAxisProperties['labelPrecision'];
@@ -685,9 +696,8 @@ module powerbi.visuals {
             if (!this.valueAxisProperties) {
                 return;
             }
-            let scaleOptions = [axisScale.log, axisScale.linear];  //until options can be update in propPane, show all options
-            let logPossible = this.axes.isLogScaleAllowed(AxisLocation.Y1);
-            let secLogPossible = this.axes.isLogScaleAllowed(AxisLocation.Y2);
+            let scaleOptions = this.getAxisScaleOptions(AxisLocation.Y1);
+            let secScaleOption = this.getAxisScaleOptions(AxisLocation.Y2);
 
             let instance: VisualObjectInstance = {
                 selector: null,
@@ -695,7 +705,7 @@ module powerbi.visuals {
                 objectName: 'valueAxis',
                 validValues: {
                     axisScale: scaleOptions,
-                    secAxisScale: scaleOptions,
+                    secAxisScale: secScaleOption,
                     axisStyle: this.axes.valueAxisHasUnitType ? [axisStyle.showTitleOnly, axisStyle.showUnitOnly, axisStyle.showBoth] : [axisStyle.showTitleOnly]
                 }
             };
@@ -705,12 +715,12 @@ module powerbi.visuals {
             if (!this.axes.isYAxisCategorical()) {
                 instance.properties['position'] = this.valueAxisProperties['position'] != null ? this.valueAxisProperties['position'] : yAxisPosition.left;
             }
-            instance.properties['axisScale'] = (this.valueAxisProperties['axisScale'] != null && logPossible) ? this.valueAxisProperties['axisScale'] : axisScale.linear;
+            instance.properties['axisScale'] = this.valueAxisProperties['axisScale'] || DEFAULT_AXIS_SCALE_TYPE;
             instance.properties['start'] = this.valueAxisProperties['start'];
             instance.properties['end'] = this.valueAxisProperties['end'];
             instance.properties['showAxisTitle'] = this.valueAxisProperties['showAxisTitle'] != null ? this.valueAxisProperties['showAxisTitle'] : false;
             instance.properties['axisStyle'] = this.valueAxisProperties['axisStyle'] != null ? this.valueAxisProperties['axisStyle'] : axisStyle.showTitleOnly;
-            instance.properties['labelColor'] = this.valueAxisProperties['labelColor'];
+            instance.properties['labelColor'] = this.valueAxisProperties['labelColor'] || DEFAULT_AXIS_COLOR;
 
             if (this.type !== CartesianChartType.HundredPercentStackedBar && this.type !== CartesianChartType.HundredPercentStackedColumn) {
                 instance.properties['labelDisplayUnits'] = this.valueAxisProperties['labelDisplayUnits'] ? this.valueAxisProperties['labelDisplayUnits'] : 0;
@@ -741,7 +751,7 @@ module powerbi.visuals {
                 };
                 secInstance.properties['secAxisLabel'] = '';
                 secInstance.properties['secPosition'] = this.valueAxisProperties['secPosition'] != null ? this.valueAxisProperties['secPosition'] : yAxisPosition.right;
-                secInstance.properties['secAxisScale'] = this.valueAxisProperties['secAxisScale'] != null && secLogPossible ? this.valueAxisProperties['secAxisScale'] : axisScale.linear;
+                secInstance.properties['secAxisScale'] = this.valueAxisProperties['secAxisScale'] || DEFAULT_AXIS_SCALE_TYPE;
                 secInstance.properties['secStart'] = this.valueAxisProperties['secStart'];
                 secInstance.properties['secEnd'] = this.valueAxisProperties['secEnd'];
                 secInstance.properties['secShowAxisTitle'] = this.valueAxisProperties['secShowAxisTitle'] != null ? this.valueAxisProperties['secShowAxisTitle'] : false;
@@ -758,7 +768,8 @@ module powerbi.visuals {
                         },
                         objectName: 'valueAxis',
                         validValues: {
-                            secAxisStyle: this.axes.secondaryValueAxisHasUnitType ? [axisStyle.showTitleOnly, axisStyle.showUnitOnly, axisStyle.showBoth] : [axisStyle.showTitleOnly]
+                            secAxisStyle: this.axes.secondaryValueAxisHasUnitType ? [axisStyle.showTitleOnly, axisStyle.showUnitOnly, axisStyle.showBoth] : [axisStyle.showTitleOnly],
+                            axisScale: scaleOptions
                         },
                     });
 
@@ -796,7 +807,6 @@ module powerbi.visuals {
                 this.interactivityService,
                 this.animator,
                 this.axes.isScrollable,
-                this.seriesLabelFormattingEnabled,
                 this.tooltipsEnabled,
                 this.lineChartLabelDensityEnabled);
 
@@ -900,6 +910,9 @@ module powerbi.visuals {
 
             let interactivityRightMargin = this.calculateInteractivityRightMargin();
 
+            let xAxisReferenceLineProperties: DataViewObject = !_.isEmpty(this.xAxisReferenceLines) ? this.xAxisReferenceLines[0].object : undefined;
+            let y1AxisReferenceLineProperties: DataViewObject = !_.isEmpty(this.y1AxisReferenceLines) ? this.y1AxisReferenceLines[0].object : undefined;
+
             let axesLayout = this.axes.negotiateAxes(
                 this.layers,
                 plotAreaViewport,
@@ -907,7 +920,9 @@ module powerbi.visuals {
                 playAxisControlLayout,
                 hideAxisLabels,
                 CartesianChart.TextProperties,
-                interactivityRightMargin );
+                interactivityRightMargin,
+                ReferenceLineHelper.extractReferenceLineValue(xAxisReferenceLineProperties),
+                ReferenceLineHelper.extractReferenceLineValue(y1AxisReferenceLineProperties));
 
             // Even if the caller thinks animations are ok, now that we've laid out the axes and legend we should disable animations
             // if the plot area changed. Animations for property changes like legend on/off are not desired.
@@ -934,7 +949,7 @@ module powerbi.visuals {
                 height: axesLayout.plotArea.height,
             };
 
-            // Adjust the margins to the legend position
+            // Adjust the margins to the legend position 
             if (this.legend) {
                 let legendPosition = this.legend.getOrientation();
 
@@ -966,7 +981,7 @@ module powerbi.visuals {
         }
 
         private calculateInteractivityRightMargin(): number {
-            // add right margin in order not to cut the circle selection of the hover line
+            // add right margin in order not to cut the circle selection of the hover line 
             if (this.visualInitOptions.interactivity && this.visualInitOptions.interactivity.isInteractiveLegend && !this.trimOrdinalDataOnOverflow) {
                 return INTERACTIVITY_RIGHT_MARGIN;
             } else {
@@ -1246,7 +1261,7 @@ module powerbi.visuals {
         public static getPreferredCategorySpan(categoryCount: number, categoryThickness: number): number {
             return categoryThickness * (categoryCount + (CartesianChart.OuterPaddingRatio * 2));
         }
-
+        
         /**
          * Note: Public for testing access.
          */
@@ -1264,7 +1279,7 @@ module powerbi.visuals {
             let totalOuterPadding = categoryThickness * CartesianChart.OuterPaddingRatio * 2;
 
             // visibleCategoryCount will be used to discard data that overflows on ordinal-axis charts.
-            // Needed for dashboard visuals
+            // Needed for dashboard visuals            
             let calculatedBarCount = Math.round((availableWidth - totalOuterPadding) / categoryThickness);
             let visibleCategoryCount = Math.min(calculatedBarCount, categoryCount);
 
@@ -1287,7 +1302,7 @@ module powerbi.visuals {
             };
         }
 
-        /**
+        /** 
          * Returns the thickness for each category.
          * For clustered charts, you still need to divide by
          * the number of series to get column width after calling this method.
@@ -1320,7 +1335,7 @@ module powerbi.visuals {
                     thickness = Math.max(thickness, CartesianChart.MinOrdinalRectThickness);
                 }
             }
-
+            
             // spec calls for using the whole plot area, but the max rectangle thickness is "as if there were three categories"
             // (outerPaddingRatio has the same units as '# of categories' so they can be added)
             let maxRectThickness = plotLength / (3 + (CartesianChart.OuterPaddingRatio * 2));
@@ -1444,7 +1459,7 @@ module powerbi.visuals {
             };
     }
 
-    /**
+    /** 
      * Computes the Cartesian Chart axes from the set of layers.
      */
     function calculateAxes(
@@ -1457,7 +1472,9 @@ module powerbi.visuals {
         textProperties: TextProperties,
         scrollbarVisible: boolean,
         existingAxisProperties: CartesianAxisProperties,
-        trimOrdinalDataOnOverflow: boolean): CartesianAxisProperties {
+        trimOrdinalDataOnOverflow: boolean,
+        xReferenceLineValue?: number,
+        y1ReferenceLineValue?: number): CartesianAxisProperties {
         debug.assertValue(layers, 'layers');
 
         let visualOptions: CalculateScaleAndDomainOptions = {
@@ -1468,13 +1485,15 @@ module powerbi.visuals {
             showCategoryAxisLabel: false,
             showValueAxisLabel: false,
             trimOrdinalDataOnOverflow: trimOrdinalDataOnOverflow,
-            categoryAxisScaleType: categoryAxisProperties && categoryAxisProperties['axisScale'] != null ? <string>categoryAxisProperties['axisScale'] : axisScale.linear,
-            valueAxisScaleType: valueAxisProperties && valueAxisProperties['axisScale'] != null ? <string>valueAxisProperties['axisScale'] : axisScale.linear,
+            categoryAxisScaleType: categoryAxisProperties && categoryAxisProperties['axisScale'] != null ? <string>categoryAxisProperties['axisScale'] : DEFAULT_AXIS_SCALE_TYPE,
+            valueAxisScaleType: valueAxisProperties && valueAxisProperties['axisScale'] != null ? <string>valueAxisProperties['axisScale'] : DEFAULT_AXIS_SCALE_TYPE,
             categoryAxisDisplayUnits: categoryAxisProperties && categoryAxisProperties['labelDisplayUnits'] != null ? <number>categoryAxisProperties['labelDisplayUnits'] : 0,
             valueAxisDisplayUnits: valueAxisProperties && valueAxisProperties['labelDisplayUnits'] != null ? <number>valueAxisProperties['labelDisplayUnits'] : 0,
             categoryAxisPrecision: categoryAxisProperties ? CartesianHelper.getPrecision(categoryAxisProperties['labelPrecision']) : null,
             valueAxisPrecision: valueAxisProperties ? CartesianHelper.getPrecision(valueAxisProperties['labelPrecision']) : null,
             playAxisControlLayout: playAxisControlLayout,
+            y1ReferenceLineValue: y1ReferenceLineValue,
+            xReferenceLineValue: xReferenceLineValue,
         };
 
         let skipMerge = valueAxisProperties && valueAxisProperties['secShow'] === true;
@@ -1501,7 +1520,7 @@ module powerbi.visuals {
 
             if (layerNumber === 1 && !yAxisWillMerge) {
                 visualOptions.forcedYDomain = valueAxisProperties ? [valueAxisProperties['secStart'], valueAxisProperties['secEnd']] : null;
-                visualOptions.valueAxisScaleType = valueAxisProperties && valueAxisProperties['secAxisScale'] != null ? <string>valueAxisProperties['secAxisScale'] : axisScale.linear;
+                visualOptions.valueAxisScaleType = valueAxisProperties && valueAxisProperties['secAxisScale'] != null ? <string>valueAxisProperties['secAxisScale'] : DEFAULT_AXIS_SCALE_TYPE;
                 visualOptions.valueAxisDisplayUnits = valueAxisProperties && valueAxisProperties['secLabelDisplayUnits'] != null ? <number>valueAxisProperties['secLabelDisplayUnits'] : 0;
                 visualOptions.valueAxisPrecision = valueAxisProperties ? CartesianHelper.getPrecision(valueAxisProperties['secLabelPrecision']) : null;
                 if (mergeResult && mergeResult.forceStartToZero) {
@@ -1654,7 +1673,7 @@ module powerbi.visuals {
                     "drag-resize-disabled": "true" /* Disables resizing of the visual when dragging the scrollbar in edit mode */
                 })
                 .call(this.brush);
-
+              
             /* Disabling the zooming feature */
             brushContext.selectAll(".resize rect")
                 .remove();
@@ -1736,7 +1755,7 @@ module powerbi.visuals {
 
                     // tick values are indices for ordinal axes
                     axisPropsToUpdate.axis.ticks(selected.length);
-                    axisPropsToUpdate.axis.tickValues(selected);
+                    axisPropsToUpdate.axis.tickValues(selected); 
 
                     // use the original tick format to format the tick values
                     let tickFormat = axisPropsToUpdate.axis.tickFormat();
@@ -2379,8 +2398,8 @@ module powerbi.visuals {
                 return false;
 
             return this.isYAxisCategorical()
-                ? axes.y1 && axes.y1.values.length > 0
-                : axes.x && axes.x.values.length > 0;
+                ? axes.y1 && axes.y1.axis != null
+                : axes.x && axes.x.axis != null;
         }
 
         public hasY2Axis(): boolean {
@@ -2430,7 +2449,9 @@ module powerbi.visuals {
             playAxisControlLayout: IRect,
             hideAxisLabels: boolean,
             textProperties: TextProperties,
-            interactivityRightMargin: number): CartesianAxesLayout {
+            interactivityRightMargin: number,
+            xReferenceLineValue?: number,
+            y1ReferenceLineValue?: number): CartesianAxesLayout {
 
             let margin: IMargin = Prototype.inherit(CartesianAxes.MinimumMargin);
             let viewport: IViewport = Prototype.inherit(parentViewport);
@@ -2457,7 +2478,9 @@ module powerbi.visuals {
                 textProperties,
                 false,
                 null,
-                this.trimOrdinalDataOnOverflow);
+                this.trimOrdinalDataOnOverflow,
+                xReferenceLineValue,
+                y1ReferenceLineValue);
 
             let renderXAxis = this.shouldRenderAxis(axes.x);
             let renderY1Axis = this.shouldRenderAxis(axes.y1);
@@ -2505,7 +2528,9 @@ module powerbi.visuals {
                 textProperties,
                 this.isXScrollBarVisible || this.isYScrollBarVisible,
                 axes,
-                this.trimOrdinalDataOnOverflow);
+                this.trimOrdinalDataOnOverflow,
+                xReferenceLineValue,
+                y1ReferenceLineValue);
 
             // We need to make two passes because the margin changes affect the chosen tick values, which then affect the margins again.
             let tickLabelMargins = undefined;
@@ -2577,7 +2602,9 @@ module powerbi.visuals {
                     textProperties,
                     this.isXScrollBarVisible || this.isYScrollBarVisible,
                      /*axes*/ axes,
-                    this.trimOrdinalDataOnOverflow);
+                    this.trimOrdinalDataOnOverflow,
+                    xReferenceLineValue,
+                    y1ReferenceLineValue);
 
                 // The minor padding adjustments could have affected the chosen tick values, which in turn requires us to calculate margins again.
                 // e.g. [0,2,4,6,8] vs. [0,5,10] the 10 is wider and needs more margin.
@@ -2734,7 +2761,6 @@ module powerbi.visuals {
             interactivityService: IInteractivityService,
             animator?: any,
             isScrollable: boolean = false,
-            seriesLabelFormattingEnabled: boolean = false,
             tooltipsEnabled?: boolean,
             lineChartLabelDensityEnabled?: boolean): ICartesianVisual[] {
 
@@ -2745,7 +2771,6 @@ module powerbi.visuals {
                 animator: animator,
                 interactivityService: interactivityService,
                 tooltipsEnabled: tooltipsEnabled,
-                seriesLabelFormattingEnabled: seriesLabelFormattingEnabled,
                 lineChartLabelDensityEnabled: lineChartLabelDensityEnabled,
             };
 
@@ -2828,7 +2853,6 @@ module powerbi.visuals {
                 interactivityService: defaultOptions.interactivityService,
                 isScrollable: defaultOptions.isScrollable,
                 tooltipsEnabled: !isTrendLayer && defaultOptions.tooltipsEnabled,
-                seriesLabelFormattingEnabled: defaultOptions.seriesLabelFormattingEnabled,
                 chartType: type,
                 lineChartLabelDensityEnabled: defaultOptions.lineChartLabelDensityEnabled,
                 isTrendLayer: isTrendLayer,
@@ -2859,7 +2883,6 @@ module powerbi.visuals {
                 animator: <IColumnChartAnimator>defaultOptions.animator,
                 interactivityService: defaultOptions.interactivityService,
                 isScrollable: defaultOptions.isScrollable,
-                seriesLabelFormattingEnabled: defaultOptions.seriesLabelFormattingEnabled,
                 tooltipsEnabled: defaultOptions.tooltipsEnabled,
                 chartType: type
             };

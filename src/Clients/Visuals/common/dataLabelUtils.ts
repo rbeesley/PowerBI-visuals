@@ -24,8 +24,6 @@
  *  THE SOFTWARE.
  */
 
-/// <reference path="../_references.ts"/>
-
 module powerbi.visuals {
     import ClassAndSelector = jsCommon.CssConstants.ClassAndSelector;
     import createClassAndSelector = jsCommon.CssConstants.createClassAndSelector;
@@ -216,7 +214,14 @@ module powerbi.visuals {
         }
 
         export function getDefaultSunburstLabelSettings(): VisualDataLabelsSettings {
-            return getDefaultTreemapLabelSettings();
+            return {
+                show: false,                                
+                labelColor: defaultInsideLabelColor,
+                fontSize: DefaultFontSizeInPt,
+                displayUnits: 0,
+                precision: defaultLabelPrecision,
+                showCategory: true,
+            };
         }
 
         export function getDefaultColumnLabelSettings(isLabelPositionInside: boolean): VisualDataLabelsSettings {
@@ -864,7 +869,7 @@ module powerbi.visuals {
                 instance.properties['show'] = options.dataLabelsSettings.show;
             }
 
-            instance.properties['color'] = options.dataLabelsSettings.labelColor;
+            instance.properties['color'] = options.dataLabelsSettings.labelColor || defaultLabelColor;
 
             if (options.displayUnits) {
                 instance.properties['labelDisplayUnits'] = options.dataLabelsSettings.displayUnits;
@@ -967,5 +972,13 @@ module powerbi.visuals {
                 allowFormatBeautification: true,
             };
         }
+
+        export function isTextWidthOverflows(textWidth, maxTextWidth): boolean {
+            return textWidth > maxTextWidth;
+        };
+
+        export function isTextHeightOverflows(textHeight, innerChordLength): boolean {
+            return textHeight > innerChordLength;
+        };
     }
 }

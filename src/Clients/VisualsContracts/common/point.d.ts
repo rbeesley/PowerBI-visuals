@@ -1,5 +1,5 @@
-﻿/*
- *  Power BI Colors
+/*
+ *  Power BI Visualizations
  *
  *  Copyright (c) Microsoft Corporation
  *  All rights reserved. 
@@ -24,26 +24,9 @@
  *  THE SOFTWARE.
  */
 
-/* THEME COLORS */
-@themePrimaryColor: #F2C811;
-@themeDarkColor: darken(@themePrimaryColor, 20%);
-@themeDarkerColor: darken(@themePrimaryColor, 25%);
-@themeSecondaryColor: #000000;
-@themeSecondaryAltColor: #444444;
-@themeTertiaryColor: #F2C811;
-@themeLightColor: #F2C811;
-@themeLighterColor: #F2C811;
-
-/* ACCENT COLORS */
-@defaultLinkColor: #0000EE;
-@linkColor: @themeSecondaryColor;
-@highlightColor: @themeDarkerColor;
-@warningColor: #E81123;
-@revertToDefault: #f1c816;
-
-@successColor: #3bb44a;
-@infoColor: #DEEBF6;
-@alertColor: #FFF9AE;
-@alertDarkColor: #DDB53B;
-@alertBorderColor: #D7D889;
-@criticalColor: #FADBD2;
+declare module powerbi.visuals {
+    export interface IPoint {
+        x: number;
+        y: number;
+    }
+}

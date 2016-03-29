@@ -24,12 +24,11 @@
  *  THE SOFTWARE.
  */
 
-/// <reference path="../_references.ts"/>
-
 declare module powerbi {
     import DataViewObjectDescriptor = powerbi.data.DataViewObjectDescriptor;
     import DataViewObjectDescriptors = powerbi.data.DataViewObjectDescriptors;
     import Selector = powerbi.data.Selector;
+    import IPoint = powerbi.visuals.IPoint;
     import ISemanticFilter = powerbi.data.ISemanticFilter;
     import ISQExpr = powerbi.data.ISQExpr;
     import IStringResourceProvider = jsCommon.IStringResourceProvider;
@@ -163,6 +162,9 @@ declare module powerbi {
 
         /** Indicates whether showing the data underlying this visual would be helpful.  Visuals that already show raw data can specify this. */
         disableVisualDetails?: boolean;
+
+        /** Indicates whether focus mode is supported for the visual. Visuals that would not benefit from focus mode (such as non-data-bound ones) can set it to true.  */
+        disableFocusMode?: boolean;
     }
 
     /** Defines the visual sorting capability. */
@@ -335,6 +337,13 @@ declare module powerbi {
         data2?: SelectorsByColumn[];
     }
 
+    export interface ContextMenuArgs {
+        data: SelectorsByColumn[];
+
+        /** Absolute coordinates for the top-left anchor of the context menu. */
+        position: IPoint;
+    }
+
     export interface SelectObjectEventArgs {
         object: DataViewObjectDescriptor;
     }
@@ -387,6 +396,9 @@ declare module powerbi {
         /** Notifies of a data point being selected. */
         onSelect(args: SelectEventArgs): void;  // TODO: Revisit onSelect vs. onSelectObject.
 
+        /** Notifies of a request for a context menu. */
+        onContextMenu(args: ContextMenuArgs): void;
+
         /** Check if selection is sticky or otherwise. */
         shouldRetainSelection(): boolean;
 
@@ -429,6 +441,9 @@ declare module powerbi {
 
         /** Gets Geocoding Service. */
         geocoder(): IGeocoder;
+
+        /** Gets IGeolocation Service */
+        geolocation(): IGeolocation;
 
         /** Gets the locale string */
         locale?(): string;
